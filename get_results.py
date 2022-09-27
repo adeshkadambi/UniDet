@@ -7,6 +7,7 @@ import time
 import cv2
 import sys
 import tqdm
+import pickle
 
 from detectron2.config import get_cfg
 from detectron2.data.detection_utils import read_image
@@ -81,6 +82,7 @@ if __name__ == "__main__":
     demo = UnifiedVisualizationDemo(cfg)
 
     if args.input:
+        assert args.output, "The output path(s) not found"
         if len(args.input) == 1:
             args.input = glob.glob(os.path.expanduser(args.input[0]))
             assert args.input, "The input path(s) was not found"
@@ -89,7 +91,7 @@ if __name__ == "__main__":
             img = read_image(path, format="BGR")
             start_time = time.time()
             predictions, visualized_output = demo.run_on_image(img)
-            print(predictions)
+            
             logger.info(
                 "{}: {} in {:.2f}s".format(
                     path,
@@ -104,15 +106,16 @@ if __name__ == "__main__":
                 if os.path.isdir(args.output):
                     assert os.path.isdir(args.output), args.output
                     out_filename = os.path.join(args.output, os.path.basename(path))
+                    out_filename_pkl = os.path.join(args.output, os.path.basename(path).split('.')[0] + '_unidet.pkl')
                 else:
                     assert len(args.input) == 1, "Please specify a directory with args.output"
                     out_filename = args.output
                 visualized_output.save(out_filename)
-            else:
-                cv2.namedWindow(WINDOW_NAME, cv2.WINDOW_NORMAL)
-                cv2.imshow(WINDOW_NAME, visualized_output.get_image()[:, :, ::-1])
-                if cv2.waitKey(0) == 27:
-                    break  # esc to quit
+
+                preds = predictions['instances'].pred_boxes.tensor, predictions['instances'].scores, predictions['instances'].pred_classes
+                with open(out_filename_pkl, 'wb') as file:
+                  pickle.dump(preds, file)
+                
     elif args.video_input:
         video = cv2.VideoCapture(args.video_input)
         width = int(video.get(cv2.CAP_PROP_FRAME_WIDTH))

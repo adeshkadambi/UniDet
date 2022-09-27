@@ -9,6 +9,7 @@ import cv2
 import torch
 import json
 
+from torchvision.ops import nms
 from detectron2.data import MetadataCatalog
 from detectron2.engine.defaults import DefaultPredictor
 from detectron2.utils.video_visualizer import VideoVisualizer
@@ -65,6 +66,8 @@ class UnifiedVisualizationDemo(object):
                     predictions["sem_seg"].argmax(dim=0).to(self.cpu_device)
                 )
             if "instances" in predictions:
+                keep_idx = nms(predictions['instances'].pred_boxes.tensor, predictions['instances'].scores, 0.95)
+                predictions['instances'] = predictions['instances'][keep_idx]
                 instances = predictions["instances"].to(self.cpu_device)
                 vis_output = visualizer.draw_instance_predictions(predictions=instances)
 
